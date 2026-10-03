@@ -209,6 +209,15 @@ class TweetFlowTests(TestCase):
             self.assertTrue(tweet.photo.name.startswith('photos/'))
             self.assertContains(self.client.get(reverse('tweet_list')), tweet.photo.url)
 
+            with override_settings(DEBUG=False, MEDIA_ROOT=media_root):
+                photo_response = self.client.get(tweet.photo.url)
+
+            try:
+                self.assertEqual(photo_response.status_code, 200)
+                self.assertEqual(photo_response['Content-Type'], 'image/png')
+            finally:
+                photo_response.close()
+
     def test_follow_and_unfollow_another_user(self):
         bob = User.objects.create_user(username='bob', password='TweetPassword123!')
         self.client.force_login(self.user)
