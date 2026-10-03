@@ -67,6 +67,26 @@ docker compose down
 
 `docker compose down -v` also deletes the persistent database and uploaded-photo volumes. Use it only when you intentionally want to remove that data.
 
+## Deploy to Northflank
+
+The Docker image runs Gunicorn, collects static files at build time, and applies migrations on container startup. In Northflank:
+
+1. Connect the `dive0-bit/Tweets` GitHub repository and create a service that builds from the repository's `Dockerfile` at the root. The project root must be the build context.
+2. Create a PostgreSQL database service. Check its plan/pricing and provision it in the same Northflank project/region as the web service.
+3. Configure the web service to expose/route container port `8000` over HTTP.
+4. Add runtime environment variables to the web service:
+   - `DJANGO_SECRET_KEY`: generate a new private value.
+   - `DJANGO_DEBUG`: `0`.
+   - `DJANGO_ALLOWED_HOSTS`: the public Northflank domain/hostname (hostname only; no scheme).
+   - `DATABASE_URL`: the PostgreSQL connection URL supplied for the Northflank database. Keep the credential private.
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: all three Cloudinary values; required for persistent user-uploaded photos in production.
+5. Deploy the service and check build/runtime logs. Startup runs `migrate --noinput`; the container then starts Gunicorn on port `8000`.
+6. Open the public service domain and verify `/tweet/`, login, a tweet upload, and a reply.
+
+The service needs a persistent PostgreSQL service and Cloudinary media storage; the container's local filesystem is not used for production database/photo persistence. The existing Render `messenger-db` should not be reused unless you create a separate database/schema for this app. Northflank pricing/free-tier availability can change, so confirm the database and service costs before provisioning.
+
+For local Docker Compose, the Compose service overrides the production entrypoint and continues using Django's development server with its own persistent SQLite/media volumes.
+
 ## Configuration
 
 Settings can be configured with environment variables:
