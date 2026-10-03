@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-change-this-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DATABASE_PATH: /data/db.sqlite3
+      MEDIA_ROOT: /media
+    ports:
+      - "8000:8000"
+    volumes:
+      - tweet_data:/data
+      - tweet_media:/media
+
+volumes:
+  tweet_data:
+  tweet_media:

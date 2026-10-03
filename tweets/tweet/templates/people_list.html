@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}People{% endblock %}
+
+{% block content %}
+<h1 class="text-white mt-4">Find people</h1>
+<p class="text-white">Open a profile to see their posts and follow or unfollow them.</p>
+
+<form method="get" action="{% url 'people_list' %}" class="mb-4">
+    <label for="people-search" class="form-label text-white">Search by username</label>
+    <div class="d-flex gap-2">
+        <input id="people-search" class="form-control" type="search" name="q" value="{{ query }}" placeholder="Enter a username">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
+<div class="d-flex flex-wrap gap-3">
+    {% for person in people %}
+    <div class="card" style="width: 18rem;">
+        <div class="card-body">
+            <h2 class="h5 card-title">
+                <a href="{% url 'user_profile' person.id %}">{{ person.username }}</a>
+            </h2>
+            <p class="card-text">{{ person.follower_count }} follower{{ person.follower_count|pluralize }}</p>
+            <a class="btn btn-outline-primary" href="{% url 'user_profile' person.id %}">View profile</a>
+            {% if user.is_authenticated %}
+                {% if person.is_following %}
+                <form method="post" action="{% url 'unfollow_user' person.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-secondary" type="submit">Unfollow</button>
+                </form>
+                {% else %}
+                <form method="post" action="{% url 'follow_user' person.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-primary" type="submit">Follow</button>
+                </form>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-white">{% if query %}No users matched that username.{% else %}No other users have joined yet.{% endif %}</p>
+    {% endfor %}
+</div>
+{% endblock %}

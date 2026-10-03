@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}{% if following_feed %}Following{% else %}Tweets{% endif %}{% endblock %}
+
+{% block content %}
+
+<h1 class="text-center text-white mb-4">{% if following_feed %}Tweets from people you follow{% else %}Welcome to tweets{% endif %}</h1>
+{% if query %}
+<p class="text-white text-center">
+    Search results for "{{ query }}"
+</p>
+{% endif %}
+
+<a class="btn btn-primary mb-4" href="{% url 'tweet_create' %}">Create a tweet</a>
+<div class="d-flex flex-wrap gap-3">
+    {% for tweet in tweets %}
+    {% include "tweet/_tweet_card.html" %}
+    {% empty %}
+    <p class="text-white">{% if query %}No tweets matched your search.{% else %}No tweets yet. Be the first to post!{% endif %}</p>
+    {% endfor %}
+</div>
+
+{% include "tweet/_tweet_detail_modal.html" %}
+{% endblock %}

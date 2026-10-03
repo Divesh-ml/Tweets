@@ -1,0 +1,128 @@
+<style>
+    .tweet-detail-image-wrap {
+        max-height: 65vh;
+        overflow: auto;
+    }
+    .tweet-detail-image {
+        display: block;
+        max-width: 100%;
+        max-height: 65vh;
+        margin: 0 auto;
+        cursor: zoom-in;
+    }
+    .tweet-detail-image.is-zoomed {
+        width: 150%;
+        max-width: none;
+        max-height: none;
+        cursor: zoom-out;
+    }
+    .tweet-detail-text {
+        white-space: pre-wrap;
+    }
+</style>
+
+<div class="modal fade" id="tweetDetailModal" tabindex="-1" aria-labelledby="tweetDetailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tweetDetailTitle">Tweet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <a id="tweetDetailUser" class="fw-bold" href="#"></a>
+                <p id="tweetDetailText" class="tweet-detail-text mt-2 mb-2"></p>
+                <div id="tweetDetailImageWrap" class="tweet-detail-image-wrap mb-2" hidden>
+                    <img id="tweetDetailImage" class="tweet-detail-image" alt="">
+                </div>
+                <small id="tweetDetailDate" class="text-muted"></small>
+                <hr>
+                <h6>Replies</h6>
+                <div id="tweetDetailReplies" class="mb-3"></div>
+                {% if user.is_authenticated %}
+                <form id="tweetReplyForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label class="form-label" for="tweetReplyText">Write a reply</label>
+                    <textarea class="form-control" id="tweetReplyText" name="text" rows="3" maxlength="240" required></textarea>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button class="btn btn-primary" type="submit">Reply</button>
+                    </div>
+                </form>
+                {% else %}
+                <p><a id="tweetDetailLogin" href="{% url 'login' %}">Log in</a> to reply.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalElement = document.getElementById('tweetDetailModal');
+        const title = document.getElementById('tweetDetailTitle');
+        const author = document.getElementById('tweetDetailUser');
+        const text = document.getElementById('tweetDetailText');
+        const imageWrap = document.getElementById('tweetDetailImageWrap');
+        const image = document.getElementById('tweetDetailImage');
+        const date = document.getElementById('tweetDetailDate');
+        const replies = document.getElementById('tweetDetailReplies');
+        const replyForm = document.getElementById('tweetReplyForm');
+        const loginLink = document.getElementById('tweetDetailLogin');
+        const loginUrl = "{% url 'login' %}";
+
+        modalElement.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget;
+            if (!trigger) return;
+
+            const tweetId = trigger.dataset.tweetId;
+            title.textContent = 'Tweet by @' + trigger.dataset.user;
+            author.textContent = '@' + trigger.dataset.user;
+            author.href = trigger.dataset.profileUrl;
+            text.textContent = trigger.dataset.text;
+            date.textContent = trigger.dataset.createdAt;
+            image.classList.remove('is-zoomed');
+            image.alt = 'Photo uploaded by ' + trigger.dataset.user;
+            imageWrap.hidden = !trigger.dataset.photo;
+            if (trigger.dataset.photo) image.src = trigger.dataset.photo;
+
+            const replyTemplate = document.getElementById(trigger.dataset.repliesId);
+            replies.replaceChildren(...replyTemplate.cloneNode(true).childNodes);
+
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set('tweet', tweetId);
+            replies.querySelectorAll('.reply-like-form').forEach(function (form) {
+                form.querySelector('[name="next"]').value = nextUrl.pathname + nextUrl.search;
+            });
+            replies.querySelectorAll('.reply-login-link').forEach(function (link) {
+                link.href = loginUrl + '?next=' +
+                    encodeURIComponent(nextUrl.pathname + nextUrl.search);
+            });
+            if (replyForm) {
+                replyForm.action = trigger.dataset.replyUrl;
+                replyForm.querySelector('[name="next"]').value = nextUrl.pathname + nextUrl.search;
+                replyForm.querySelector('[name="text"]').value = '';
+            }
+            if (loginLink) {
+                loginLink.href = loginLink.href.split('?')[0] +
+                    '?next=' + encodeURIComponent(nextUrl.pathname + nextUrl.search);
+            }
+        });
+
+        image.addEventListener('click', function () {
+            image.classList.toggle('is-zoomed');
+        });
+
+        const tweetId = new URLSearchParams(window.location.search).get('tweet');
+        if (tweetId) {
+            const trigger = document.querySelector(
+                '[data-tweet-id="' + CSS.escape(tweetId) + '"][data-bs-target="#tweetDetailModal"]'
+            );
+            if (trigger) {
+                bootstrap.Modal.getOrCreateInstance(modalElement).show(trigger);
+                const url = new URL(window.location.href);
+                url.searchParams.delete('tweet');
+                window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+            }
+        }
+    });
+</script>

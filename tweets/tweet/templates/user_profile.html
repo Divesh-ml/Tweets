@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ profile_user.username }} profile{% endblock %}
+
+{% block content %}
+<section class="text-white mt-4 mb-4">
+    <h1>{{ profile_user.username }}</h1>
+    <p>
+        {{ profile_user.followers.count }} follower{{ profile_user.followers.count|pluralize }}
+        · {{ profile_user.following.count }} following
+    </p>
+    {% if user.is_authenticated and user != profile_user %}
+        {% if is_following %}
+        <form method="post" action="{% url 'unfollow_user' profile_user.id %}">
+            {% csrf_token %}
+            <button class="btn btn-outline-light" type="submit">Unfollow</button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'follow_user' profile_user.id %}">
+            {% csrf_token %}
+            <button class="btn btn-primary" type="submit">Follow</button>
+        </form>
+        {% endif %}
+    {% endif %}
+</section>
+
+<h2 class="text-white">Tweets</h2>
+<div class="d-flex flex-wrap gap-3">
+    {% for tweet in tweets %}
+    {% include "tweet/_tweet_card.html" %}
+    {% empty %}
+    <p class="text-white">This user has not posted any tweets yet.</p>
+    {% endfor %}
+</div>
+{% include "tweet/_tweet_detail_modal.html" %}
+{% endblock %}

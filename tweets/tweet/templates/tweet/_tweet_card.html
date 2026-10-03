@@ -1,0 +1,77 @@
+<article class="card" style="width: 18rem;">
+    <div class="card-body">
+        <h5 class="card-title">
+            <a href="{% url 'user_profile' tweet.user.id %}">{{ tweet.user.username }}</a>
+        </h5>
+        {% if tweet.reply_to %}
+        <p class="small text-muted">Replying to @{{ tweet.reply_to.user.username }}</p>
+        {% endif %}
+        <a
+            class="tweet-open-link text-decoration-none text-reset"
+            href="#tweetDetailModal"
+            data-bs-toggle="modal"
+            data-bs-target="#tweetDetailModal"
+            data-tweet-id="{{ tweet.id }}"
+            data-user="{{ tweet.user.username }}"
+            data-profile-url="{% url 'user_profile' tweet.user.id %}"
+            data-text="{{ tweet.text }}"
+            data-created-at="{{ tweet.created_at }}"
+            data-photo="{% if tweet.photo %}{{ tweet.photo.url }}{% endif %}"
+            data-reply-url="{% url 'tweet_reply' tweet.id %}"
+            data-replies-id="tweet-replies-{{ tweet.id }}"
+        >
+            {% if tweet.photo %}
+            <img src="{{ tweet.photo.url }}" class="card-img-top mb-2" alt="Photo uploaded by {{ tweet.user.username }}">
+            {% endif %}
+            <p class="card-text tweet-card-text">{{ tweet.text|linebreaksbr }}</p>
+            <p class="card-text"><small class="text-muted">{{ tweet.created_at }}</small></p>
+            <small class="text-muted">{{ tweet.reply_count }} repl{{ tweet.reply_count|pluralize:"y,ies" }}</small>
+        </a>
+        <div class="d-flex gap-2 mt-2">
+            <button
+                type="button"
+                class="btn btn-outline-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#tweetDetailModal"
+                data-tweet-id="{{ tweet.id }}"
+                data-user="{{ tweet.user.username }}"
+                data-profile-url="{% url 'user_profile' tweet.user.id %}"
+                data-text="{{ tweet.text }}"
+                data-created-at="{{ tweet.created_at }}"
+                data-photo="{% if tweet.photo %}{{ tweet.photo.url }}{% endif %}"
+                data-reply-url="{% url 'tweet_reply' tweet.id %}"
+                data-replies-id="tweet-replies-{{ tweet.id }}"
+            >Open / Reply</button>
+            {% if tweet.user == user %}
+            <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-primary btn-sm">Edit</a>
+            <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-danger btn-sm">Delete</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="d-none" id="tweet-replies-{{ tweet.id }}">
+        {% for reply in tweet.prefetched_replies %}
+        <article class="border-top pt-2 mt-2">
+            <a href="{% url 'user_profile' reply.user.id %}">@{{ reply.user.username }}</a>
+            <p class="mb-1">{{ reply.text|linebreaksbr }}</p>
+            <small class="text-muted">{{ reply.created_at }}</small>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                {% if user.is_authenticated %}
+                <form method="post" action="{% url 'toggle_tweet_like' reply.id %}" class="reply-like-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="{% if reply.liked_by_user %}unlike{% else %}like{% endif %}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="btn btn-sm {% if reply.liked_by_user %}btn-danger{% else %}btn-outline-danger{% endif %}" type="submit">
+                        {% if reply.liked_by_user %}Unlike{% else %}Like{% endif %}
+                    </button>
+                </form>
+                {% else %}
+                <a class="reply-login-link small" href="{% url 'login' %}">Log in to like</a>
+                {% endif %}
+                <small class="text-muted">{{ reply.like_count }} like{{ reply.like_count|pluralize }}</small>
+            </div>
+        </article>
+        {% empty %}
+        <p class="text-muted">No replies yet.</p>
+        {% endfor %}
+    </div>
+</article>
