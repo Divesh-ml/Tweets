@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 import os
 from django.core.exceptions import ImproperlyConfigured
-import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,8 +47,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tweet',
-    'cloudinary_storage',
-    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -90,24 +87,12 @@ WSGI_APPLICATION = 'tweets.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=not DEBUG,
-        ),
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': Path(os.environ.get('DATABASE_PATH', BASE_DIR / 'db.sqlite3')),
     }
-else:
-    if not DEBUG:
-        raise ImproperlyConfigured('DATABASE_URL must be set when DEBUG is disabled.')
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': Path(os.environ.get('DATABASE_PATH', BASE_DIR / 'db.sqlite3')),
-        }
-    }
+}
 
 
 # Password validation
@@ -179,31 +164,6 @@ LOGIN_URL = '/accounts/login/'
 
 LOGIN_REDIRECT_URL = '/tweet/'
 LOGOUT_REDIRECT_URL = '/tweet/'
-
-CLOUDINARY_CREDENTIALS = (
-    os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    os.environ.get('CLOUDINARY_API_KEY'),
-    os.environ.get('CLOUDINARY_API_SECRET'),
-)
-if any(CLOUDINARY_CREDENTIALS):
-    if not all(CLOUDINARY_CREDENTIALS):
-        raise ImproperlyConfigured(
-            'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and '
-            'CLOUDINARY_API_SECRET together.'
-        )
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': CLOUDINARY_CREDENTIALS[0],
-        'API_KEY': CLOUDINARY_CREDENTIALS[1],
-        'API_SECRET': CLOUDINARY_CREDENTIALS[2],
-    }
-    STORAGES['default'] = {
-        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
-    }
-elif not DEBUG:
-    raise ImproperlyConfigured(
-        'Cloudinary credentials must be set when DEBUG is disabled so uploaded '
-        'photos use persistent media storage.'
-    )
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = os.environ.get(
