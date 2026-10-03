@@ -57,7 +57,7 @@ From the repository root, with Docker Desktop running:
 docker compose up --build
 ```
 
-Open <http://localhost:8000/tweet/>. Compose applies migrations on startup and persists the SQLite database and uploaded photos in named Docker volumes.
+Open <http://localhost:8000/tweet/>. The image collects static assets at build time. Compose applies migrations on startup and persists the SQLite database and uploaded photos in named Docker volumes.
 
 ```powershell
 docker compose logs -f web
@@ -67,17 +67,43 @@ docker compose down
 
 `docker compose down -v` also deletes the persistent database and uploaded-photo volumes. Use it only when you intentionally want to remove that data.
 
-## Configuration and deployment notes
+## Configuration
 
 Settings can be configured with environment variables:
 
-- `DJANGO_SECRET_KEY`: Django signing key. A development-only fallback is used when `DEBUG` is enabled; provide a strong private value for deployment.
+- `DJANGO_SECRET_KEY`: Django signing key. Required when `DJANGO_DEBUG=0`.
 - `DJANGO_DEBUG`: defaults to `1` for local development. Set to `0` in deployment.
 - `DJANGO_ALLOWED_HOSTS`: comma-separated hostnames; defaults to `localhost,127.0.0.1`.
+- `DJANGO_SECURE_SSL_REDIRECT`: defaults to on when debug is off.
+- `DJANGO_SECURE_HSTS_SECONDS`: HSTS duration in seconds; production default is `3600`.
+- `DJANGO_EMAIL_BACKEND`: optional mail backend override; production defaults to SMTP, local development to console output.
+- `DATABASE_URL`: PostgreSQL URL. Required when `DJANGO_DEBUG=0`; without it, local development uses SQLite.
 - `DATABASE_PATH`: optional SQLite database file path.
 - `MEDIA_ROOT`: optional directory for user-uploaded photos.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: set all three to store uploaded photos on Cloudinary. They are required when `DJANGO_DEBUG=0`; local development uses filesystem storage.
 
-For Docker Compose, these variables can be set in the shell or an untracked root `.env` file. Never commit real secrets. Before public deployment, use a production-grade WSGI/ASGI server, HTTPS, a production database/media store as appropriate, and review Django's deployment checklist.
+For Docker Compose, these variables can be set in the shell or an untracked root `.env` file. Never commit real secrets.
+
+## Deploy to Render
+
+This repository is prepared for a Render **Python Web Service** (not the local Docker Compose service). In the Render Dashboard:
+
+1. Create a managed PostgreSQL database. Copy its **internal** connection URL.
+2. Create a Web Service and connect `dive0-bit/Tweets`, branch `main`. Leave Root Directory empty (repository root).
+3. Set:
+   - **Build Command:** `pip install -r requirements.txt && python tweets/manage.py collectstatic --noinput`
+   - **Start Command:** `cd tweets && python manage.py migrate && gunicorn tweets.wsgi:application --bind 0.0.0.0:$PORT`
+4. Add these Web Service environment variables:
+   - `DJANGO_SECRET_KEY`: generate a new private value (Render's Generate option is suitable).
+   - `DJANGO_DEBUG`: `0`
+   - `DJANGO_ALLOWED_HOSTS`: the exact Render hostname, for example `tweets-example.onrender.com` (no `https://`).
+   - `DATABASE_URL`: the PostgreSQL internal connection URL from step 1.
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: copy these from the Cloudinary dashboard. Keep the API secret private.
+5. Deploy. Open the Render service URL and check `/tweet/`; inspect deploy logs if build, migrations, or startup fail.
+
+The build collects static assets and WhiteNoise serves them. Uploaded photos use Cloudinary; production startup intentionally fails if its credentials are missing. PostgreSQL and Cloudinary accounts must be provisioned separately. The Render database starts separately from the local SQLite database, so existing local users/tweets/photos are not copied automatically. Do not use the local `docker-compose.yml` as the Render production start command.
+
+The service uses Gunicorn, requires PostgreSQL and Cloudinary in production, enables secure cookies and HTTPS redirection when debug is off, and selects SMTP instead of the development console email backend. Email is not currently used by the app. Before public production use, also review Django's deployment checklist, backups, Cloudinary access policy, and account/service plans.
 
 ## Project structure
 
@@ -86,7 +112,6 @@ For Docker Compose, these variables can be set in the shell or an untracked root
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
-├── tweetDocument.md          # Hinglish project-flow/code guide
 └── tweets/
     ├── manage.py
     ├── tweets/               # Django project settings and root URLs
@@ -94,7 +119,3 @@ For Docker Compose, these variables can be set in the shell or an untracked root
     ├── templates/            # Shared layout and authentication templates
     └── media/                # Local uploads (ignored by Git)
 ```
-
-## Documentation
-
-See [`tweetDocument.md`](tweetDocument.md) for a Hinglish explanation of the request flow and the project's source files.
